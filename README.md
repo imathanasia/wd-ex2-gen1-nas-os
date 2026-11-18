@@ -35,8 +35,9 @@ No mockups are used here.
 
 ## Release image
 
-The rootfs image is distributed as a compressed tarball with a `.sha256` file.
-Verify the digest before installing it.
+The rootfs image is on the
+[v1.0.0 release](https://github.com/imathanasia/wd-ex2-gen1-nas-os/releases/tag/v1.0.0).
+Download the `.tar.xz` and its `.sha256`, then verify the digest before use.
 
 ## Start here
 
