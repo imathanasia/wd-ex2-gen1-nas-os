@@ -59,6 +59,7 @@ Back up your data. Disassembly and NAND flashing can brick the device.
 Reference photos from the public teardown (not copied into this repo):
 
 - gisab WDMC-Ex2 serial cable section: <https://github.com/gisab/WDMC-Ex2/tree/main/1.SerialCable>
+- gisab board bottom photo: <https://raw.githubusercontent.com/gisab/WDMC-Ex2/main/1.SerialCable/Bottom.jpg>
 - eTeknix EX2 teardown, page 2: <http://www.eteknix.com/western-digital-ex2-2-bay-8tb-my-cloud-nas-review/2/>
 
 ## 2. Find JP2 on the board
