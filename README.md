@@ -44,6 +44,8 @@ Verify the digest before installing it.
 3.3V USB-UART adapter, the JP2 pinout, TFTP in Windows, the U-Boot commands and
 the web installer.
 
+![JP2 serial pads](docs/images/gisab-jp2-labeled.png)
+
 Project facts and limits are in `PROJECT-NOTES.md`.
 
 If your box already has this project's kernel and boot manager, insert the USB

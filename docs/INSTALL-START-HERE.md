@@ -56,11 +56,13 @@ password is in `/usr/local/sbin/wd-control.py`.
 
 Back up your data. Disassembly and NAND flashing can brick the device.
 
-Reference photos from the public teardown (not copied into this repo):
+Reference photos from the public teardown:
 
 - gisab WDMC-Ex2 serial cable section: <https://github.com/gisab/WDMC-Ex2/tree/main/1.SerialCable>
-- gisab board bottom photo: <https://raw.githubusercontent.com/gisab/WDMC-Ex2/main/1.SerialCable/Bottom.jpg>
 - eTeknix EX2 teardown, page 2: <http://www.eteknix.com/western-digital-ex2-2-bay-8tb-my-cloud-nas-review/2/>
+
+The photo below is cropped from gisab's board image and shows the JP2 area.
+It is a reference, not a replacement for checking your own PCB.
 
 ## 2. Find JP2 on the board
 
@@ -69,10 +71,10 @@ near the SATA connector for disk 1. On many boards it is not soldered.
 
 ![JP2 board location](images/jp2-location.png)
 
-Community photos exist for related WD boards, but board revisions differ. The
-diagram above is the reference for this guide; verify the pinout on your own PCB
-with a multimeter before powering on. External photo links are in the reference
-list at the top of this page.
+![JP2 on the board](images/gisab-jp2-labeled.png)
+
+Board revisions differ. Verify the pinout on your own PCB with a multimeter
+before powering on. The source photo is credited in `IMAGE-CREDITS.md`.
 
 
 
