@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+<style>text{font-family:system-ui,sans-serif;fill:#e8f1fa}.t{font-size:28px;font-weight:700}.l{font-size:18px}.s{font-size:14px;fill:#93a8bd}</style>
+<rect width="900" height="420" fill="#0a0f16"/>
+<text x="40" y="60" class="t">Keep calm. Only three wires.</text>
+<text x="40" y="95" class="s">Never connect the 3.3V pin. Never use RS232 or 5V TTL.</text>
+<rect x="40" y="140" width="380" height="220" rx="14" fill="#121d29" stroke="#2a3a4d" stroke-width="2"/>
+<text x="65" y="180" class="l">EX2 Gen1 JP2</text><text x="65" y="220" class="l">1 TX → adapter RX</text><text x="65" y="260" class="l">2 GND → adapter GND</text><text x="65" y="300" class="l">5 RX → adapter TX</text>
+<rect x="480" y="140" width="380" height="220" rx="14" fill="#121d29" stroke="#2a3a4d" stroke-width="2"/>
+<text x="505" y="180" class="l">Terminal</text><text x="505" y="220" class="l">115200 8N1</text><text x="505" y="260" class="l">no hardware flow control</text><text x="505" y="300" class="l">press 1 to stop U-Boot</text>
+</svg>

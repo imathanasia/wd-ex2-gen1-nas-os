@@ -1,0 +1,45 @@
+#!/bin/bash
+# wd-send-upstream - configure Gmail + send the remaining DTS patch emails.
+# Run THIS YOURSELF on this box. The App Password is typed with `read -s` and
+# never appears in chat, command history, or this file.
+set -euo pipefail
+
+PATCH_SRC=/root/projects/wdbvkw0060jch-20/dts/upstream/0001-sendemail.patch
+FINAL=/tmp/0001-ex2-final.patch
+
+echo "Gmail SMTP setup for git send-email"
+read -rp "Gmail address (From + Signed-off-by): " MAIL
+[[ "$MAIL" == *@* ]] || { echo "invalid address"; exit 1; }
+read -rsp "Gmail App Password (16 chars, no spaces): " PASS; echo
+[[ -n "$PASS" ]] || { echo "empty password"; exit 1; }
+
+git config --global sendemail.smtpserver smtp.gmail.com
+git config --global sendemail.smtpserverport 587
+git config --global sendemail.smtpencryption tls
+git config --global sendemail.smtpuser "$MAIL"
+git config --global sendemail.smtppass "$PASS"
+git config --global user.name "ImAthanasia"
+git config --global user.email "$MAIL"
+unset PASS
+
+sed "s|__FROM_EMAIL__|$MAIL|g" "$PATCH_SRC" > "$FINAL"
+echo "Prepared $FINAL"
+grep -E '^(From:|Signed-off-by:|Subject:)' "$FINAL" | head -3
+
+echo
+echo "--- DRY RUN (no email sent) ---"
+git send-email --dry-run \
+  --to="linux-arm-kernel@lists.infradead.org" \
+  --cc="devicetree@vger.kernel.org" \
+  --cc="linux-kernel@vger.kernel.org" \
+  "$FINAL"
+echo
+read -rp "Send for real now? [y/N] " OK
+[[ "$OK" == "y" || "$OK" == "Y" ]] || { echo "aborted"; exit 0; }
+
+git send-email \
+  --to="linux-arm-kernel@lists.infradead.org" \
+  --cc="devicetree@vger.kernel.org" \
+  --cc="linux-kernel@vger.kernel.org" \
+  "$FINAL"
+echo "SENT. Watch for mlmmj bounces."

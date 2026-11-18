@@ -1,0 +1,9 @@
+[Unit]
+Description=Weltrend MCU: OS-ready handshake, power LED, WoL
+After=multi-user.target
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/local/sbin/wd-mcu ready; /usr/local/sbin/wd-mcu led on; /usr/local/sbin/wd-mcu wol on'
+[Install]
+WantedBy=multi-user.target

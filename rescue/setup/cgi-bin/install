@@ -1,0 +1,181 @@
+#!/bin/busybox sh
+# Setup-mode installer (busybox httpd CGI). Plan/validate first (dry=1), then install.
+# POST/GET: os=<dev> data=<dev>[,<dev>] raid=1|0 confirm=ERASE src=<path> dry=1
+# Safety: never writes unless confirm=ERASE and dry != 1. Refuses mtd, md members,
+# mounted devices, the root device and the running data volume.
+exec 2>&1
+BB=/bin/busybox
+printf 'Content-Type: text/plain\r\n\r\n'
+
+QS="${QUERY_STRING:-}"
+if [ -z "$QS" ]; then QS=$($BB cat); fi
+get() { printf '%s\n' "$QS" | $BB tr '&' '\n' | $BB grep -m1 "^$1=" | $BB cut -d= -f2- | $BB sed 's/%2C/,/g; s/%3D/=/g'; }
+
+OSDEV=$(get os); DATADEV=$(get data); RAID=$(get raid); CONFIRM=$(get confirm); SRC=$(get src); DRY=$(get dry)
+# source selection: explicit src=, else /data, else scan attached partitions (USB stick)
+if [ -z "$SRC" ]; then
+  for c in /data/rootfs.tar.xz /data/rootfs.tar.gz; do [ -f "$c" ] && SRC=$c && break; done
+fi
+if [ -z "$SRC" ]; then
+  $BB mkdir -p /mnt/scan 2>/dev/null
+  FOUND=0
+  for part in /dev/sd?[0-9]; do
+    [ "$FOUND" = 1 ] && break
+    [ -b "$part" ] || continue
+    case "$part" in "$OSDEV"*) continue ;; esac
+    $BB grep -qsF "$part" /proc/mounts && continue
+    for fs in vfat ext4 exfat; do
+      [ "$FOUND" = 1 ] && break
+      $BB mount -t "$fs" -o ro "$part" /mnt/scan 2>/dev/null || continue
+      for t in /mnt/scan/rootfs.tar.xz /mnt/scan/rootfs.tar.gz /mnt/scan/*/rootfs.tar.xz /mnt/scan/*/rootfs.tar.gz; do
+        if [ -f "$t" ]; then SRC="$t"; FOUND=1; echo "source disk: $part"; break; fi
+      done
+      [ "$FOUND" = 1 ] || $BB umount /mnt/scan 2>/dev/null
+    done
+  done
+fi
+[ -n "$SRC" ] || SRC=/data/rootfs.tar.gz
+STATE=/run/wd/install.state
+mkdir -p /run/wd 2>/dev/null
+
+say() { echo "$*"; echo "$*" >> "$STATE"; }
+
+echo "=== WD setup installer ==="
+say "target(os)=${OSDEV:-none} data=${DATADEV:-none} raid=${RAID:-0} dry=${DRY:-0} src=$SRC"
+
+die() { echo "ERROR: $*"; echo "ERROR: $*" >> "$STATE"; echo 1 > /tmp/wd-install.rc; exit 1; }
+
+verify_sha() {
+  _F=$1
+  if [ -f "$_F.sha256" ]; then
+    WANT=$($BB cut -d' ' -f1 "$_F.sha256")
+    GOT=$($BB sha256sum "$_F" | $BB cut -d' ' -f1)
+    if [ "$WANT" = "$GOT" ]; then echo "integrity: SHA-256 OK"; else die "source SHA-256 MISMATCH"; fi
+  else
+    echo "integrity: WARNING - no $_F.sha256 manifest (installer signing not enforced)"
+  fi
+}
+
+# ---- validation -------------------------------------------------------------
+[ -n "$OSDEV" ] || die "no OS target selected"
+case "$OSDEV" in /dev/mtd*) die "refusing mtd device" ;; esac
+[ -b "$OSDEV" ] || die "$OSDEV is not a block device"
+ROOTSRC=$($BB findmnt -no SOURCE / 2>/dev/null || echo "")
+case "$ROOTSRC" in *"$OSDEV"*) die "$OSDEV is in use (root)" ;; esac
+if grep -qsF "$OSDEV" /proc/mounts; then die "$OSDEV or a partition is mounted"; fi
+if [ -r /proc/mdstat ] && grep -q "$($BB basename "$OSDEV")" /proc/mdstat; then die "$OSDEV is a RAID member"; fi
+
+# partition node: sda1 but loop0p1 / nvme0n1p1 / mmcblk0p1
+case "$OSDEV" in
+  *[0-9]) PART="${OSDEV}p1" ;;
+  *)      PART="${OSDEV}1" ;;
+esac
+# prefer real e2fsprogs (busybox mke2fs is ext2-only and has no -t)
+MKFS=
+for m in /sbin/mke2fs /usr/sbin/mke2fs /usr/local/sbin/mke2fs; do
+  [ -x "$m" ] && MKFS=$m && break
+done
+[ -n "$MKFS" ] || MKFS="$BB mke2fs"
+
+# ---- plan -------------------------------------------------------------------
+echo
+echo "PLAN:"
+echo "  1) zero the first 2 MiB of $OSDEV (signature wipe)"
+echo "  2) fdisk MBR: one bootable Linux partition"
+echo "  3) mke2fs -t ext4 -L rootfs $PART"
+echo "  4) mount $PART -> untar $SRC (verified)"
+echo "  5) write /etc/fstab by filesystem UUID"
+[ "$RAID" = "1" ] && [ -n "$DATADEV" ] && echo "  6) mdadm RAID1 over $DATADEV -> mkfs.ext4 -L nas"
+echo "  7) sync and report"
+
+# source + integrity (URL streams to the target disk in the real run, no RAM cap)
+IS_URL=0
+case "$SRC" in
+  http://*|https://*)
+    IS_URL=1; SRC_URL=$SRC
+    if [ "$DRY" = "1" ]; then
+      echo; echo "source: $SRC_URL (URL; real run streams directly to the target disk, not RAM)"
+      echo "clock: RTC battery is dead; real run syncs UTC from the URL's HTTP Date header first"
+    else
+      [ -x /rescue/wd-setclock ] && /rescue/wd-setclock "$SRC_URL" 2>/dev/null || true
+      WGETOPT=
+      [ "$($BB date +%Y 2>/dev/null)" -ge 2025 ] 2>/dev/null || {
+        WGETOPT=--no-check-certificate
+        echo "clock: still unsynced; HTTPS certificate validation disabled for this fetch"
+      }
+    fi ;;
+esac
+if [ "$IS_URL" = 0 ]; then
+  if [ -f "$SRC" ]; then
+    echo; echo "source: $SRC ($($BB du -h "$SRC" 2>/dev/null | $BB cut -f1))"
+    verify_sha "$SRC"
+  else
+    die "source not found: put rootfs.tar.gz/.xz in /data, on an attached disk, or pass src=<url>"
+  fi
+fi
+
+[ -n "$CONFIRM" ] || die "confirmation missing (type ERASE)"
+[ "$CONFIRM" = "ERASE" ] || die "confirmation must be exactly ERASE"
+[ "$DRY" = "1" ] && { echo; echo "DRY RUN - nothing written."; exit 0; }
+
+# ---- install (destructive) --------------------------------------------------
+say "INSTALL START $(date -u +%FT%TZ 2>/dev/null)"
+{
+  echo; echo "== wipe (2 MiB zeros) =="; $BB dd if=/dev/zero of="$OSDEV" bs=1M count=2 2>/dev/null || die "wipe failed"
+  echo "== partition (fdisk) =="
+  printf 'o\nn\np\n1\n\n\nw\n' | $BB fdisk "$OSDEV" 2>&1 | tail -3 || die "fdisk failed"
+  $BB mdev -s 2>/dev/null; sleep 1
+  echo "== mkfs (mke2fs) =="
+  if [ "$MKFS" = "$BB mke2fs" ]; then
+    $BB mke2fs -L rootfs "$PART" 2>&1 | tail -3 || die "mke2fs failed"
+  else
+    $MKFS -F -t ext4 -L rootfs "$PART" 2>&1 | tail -3 || die "mke2fs failed"
+  fi
+  echo "== mount+untar =="
+  $BB mkdir -p /newroot; $BB mount "$PART" /newroot || die "mount failed"
+  if [ "$IS_URL" = 1 ]; then
+    echo "== download to target disk (streaming, no RAM copy) =="
+    DL=/newroot/.wd-rootfs.dl
+    $BB wget $WGETOPT -qO "$DL" "$SRC_URL" || die "download failed"
+    DLSZ=$($BB wc -c < "$DL")
+    [ "$DLSZ" -gt 1048576 ] || die "download too small (${DLSZ} B) - HTML error page or truncated transfer?"
+    $BB wget $WGETOPT -qO "$DL.sha256" "$SRC_URL.sha256" 2>/dev/null || true
+    verify_sha "$DL"
+    SRC=$DL
+  fi
+  MAGIC=$($BB od -An -tx1 -N6 "$SRC" 2>/dev/null | $BB tr -d ' \n')
+  case "$MAGIC" in
+    fd377a585a00*) $BB xz -dc "$SRC" | $BB tar xf - -C /newroot ;;
+    1f8b*)         $BB tar xzf "$SRC" -C /newroot ;;
+    28b52ffd*)     die "zstd not available in the appliance; ship .tar.gz or .tar.xz" ;;
+    *)             die "unknown archive format ($MAGIC)" ;;
+  esac || { $BB umount /newroot; die "untar failed"; }
+  # Use the filesystem UUID (busybox blkid has no -s/-o; PARTUUID is not
+  # exposed without udev, and the appliance uses mdev).
+  BLK=$($BB blkid "$PART" 2>/dev/null)
+  FSUUID=
+  case "$BLK" in *UUID=\"*) FSUUID=${BLK#*UUID=\"}; FSUUID=${FSUUID%%\"*} ;; esac
+  if [ -z "$FSUUID" ] && [ -x /sbin/tune2fs ]; then
+    FSUUID=$(/sbin/tune2fs -l "$PART" 2>/dev/null | $BB awk '/Filesystem UUID/{print $3}')
+  fi
+  [ -n "$FSUUID" ] || die "cannot determine filesystem UUID"
+  echo "== fstab (UUID=$FSUUID) =="
+  $BB mkdir -p /newroot/etc 2>/dev/null
+  printf 'UUID=%s / ext4 defaults,noatime 0 1\n' "$FSUUID" > /newroot/etc/fstab || die "cannot write /newroot/etc/fstab"
+  [ "$RAID" = "1" ] && [ -n "$DATADEV" ] && {
+    echo "== RAID1 data =="
+    SET=$(printf '%s' "$DATADEV" | $BB tr ',' ' ')
+    # shellcheck disable=SC2086
+    $BB mdadm --create /dev/md0 --level=1 --raid-devices=2 --run $SET 2>&1 | tail -2
+    if [ "$MKFS" = "$BB mke2fs" ]; then
+      $BB mke2fs -L nas /dev/md0 2>&1 | tail -2
+    else
+      $MKFS -F -t ext4 -L nas /dev/md0 2>&1 | tail -2
+    fi
+    printf 'LABEL=nas /srv/nas ext4 defaults,nofail 0 2\n' >> /newroot/etc/fstab
+  }
+  $BB sync; $BB umount /newroot
+  echo "== DONE =="
+  echo "OS installed on $PART (UUID=$FSUUID). Reboot to start it."
+} | tee -a "$STATE"
+say "INSTALL END $(date -u +%FT%TZ 2>/dev/null)"

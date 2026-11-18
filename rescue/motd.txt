@@ -1,0 +1,16 @@
+
+   __        __ ___    _   _    _    ____
+   \ \      / /| _ \  / \ | |  / \  / ___|
+    \ \ /\ / / | | | |/ _ \| | / _ \ \___ \
+     \ V  V /  | |_| / ___ \ || (_) | ___) |
+      \_/\_/   |____/_/   \_\_\___/ |____/
+
+            R E S C U E   M O D E
+      WD My Cloud EX2 Gen1  ·  ImAthanasia
+   serial 115200 8N1  ·  ssh root@192.168.1.22
+
+        (^ω^)   no data was touched
+
+  Commands:  status  |  disks  |  smart  |  raid  |  net  |  log
+  Safety:    read-only by default; RAID members are never auto-mounted
+             NAND writes require an explicit command and a backup

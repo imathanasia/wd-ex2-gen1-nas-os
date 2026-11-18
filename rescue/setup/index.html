@@ -1,0 +1,125 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WD My Cloud EX2 — Installer</title>
+<style>
+:root{--bg:#0a0f16;--bg2:#0e1620;--card:#121d29;--card2:#162432;--line:#24384a;--text:#e8f1fa;--muted:#8ea3b8;--faint:#5d7488;--accent:#057feb;--accent2:#3aa0ff;--ok:#2fbf71;--warn:#e6a23c;--err:#e05a5a;--r:10px}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"DejaVu Sans",sans-serif;color:var(--text);min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(900px 500px at 82% -10%,rgba(5,127,235,.20),transparent 62%),radial-gradient(700px 420px at -10% 110%,rgba(58,160,255,.08),transparent 60%),linear-gradient(180deg,#0a0f16,#0c131c);overflow:hidden;position:relative}
+body::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(120,160,200,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(120,160,200,.035) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(70% 60% at 50% 40%,#000,transparent);pointer-events:none;z-index:0}
+.tux{position:fixed;right:2vw;bottom:-4vh;width:min(46vw,520px);opacity:.055;z-index:0;pointer-events:none;filter:drop-shadow(0 0 30px #000)}
+.wrap{position:relative;z-index:1;width:min(820px,97vw)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{font:11px/1 ui-monospace,Menlo,monospace;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);background:rgba(18,29,41,.75);border-radius:99px;padding:7px 11px}
+.chip b{color:var(--accent2);font-weight:600}
+.card{background:linear-gradient(180deg,rgba(18,29,41,.94),rgba(14,22,32,.96));border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.03) inset;overflow:hidden;backdrop-filter:blur(6px)}
+.head{display:flex;align-items:center;gap:13px;padding:20px 24px;border-bottom:1px solid var(--line);background:rgba(22,36,50,.7)}
+.logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(145deg,var(--accent),#0059a8);display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;box-shadow:0 0 24px rgba(5,127,235,.35)}
+h1{font-size:19px;color:#f2f7fd;font-weight:700;letter-spacing:.2px}
+.sub{font-size:12px;color:var(--muted)}
+.body{padding:24px}
+.state{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:99px;background:rgba(230,162,60,.13);color:var(--warn);font-size:12px;font-weight:600;margin-bottom:18px;border:1px solid rgba(230,162,60,.25)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+ol{margin:0 0 18px;padding-left:20px}ol li{margin:8px 0}
+.hint{background:rgba(22,36,50,.6);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-size:13px;color:var(--muted);margin-bottom:18px}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#dce9f6}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:9px}
+.dev{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13px}.dev:first-of-type{border-top:0}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+.install{margin-top:18px;border-top:1px solid var(--line);padding-top:17px}
+.row{display:flex;align-items:center;gap:12px;margin:9px 0;font-size:13px;flex-wrap:wrap}
+.row label{min-width:250px;color:var(--text)}
+select,input[type=text],#confirm{flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r);font:inherit;background:var(--bg2);color:var(--text)}
+:focus{outline:0;border-color:var(--accent)}
+.btn{padding:9px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--card2);color:var(--text);cursor:pointer;font:inherit;font-size:13px;transition:.15s}
+.btn:hover{border-color:var(--accent);color:var(--accent2)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 6px 20px rgba(5,127,235,.3)}
+.btn.primary:hover{background:var(--accent2);color:#fff}
+.danger{border-color:rgba(224,90,90,.5);color:#f0a0a0}
+.out{background:#070c12;color:#cfe0f2;border:1px solid var(--line);border-radius:var(--r);padding:13px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;max-height:260px;overflow:auto;white-space:pre-wrap;margin-top:12px;display:none}
+.foot{padding:14px 24px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);background:rgba(22,36,50,.55);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.foot a{color:var(--accent2)}
+@media(max-width:640px){body{padding:14px}.row label{min-width:100%}.head{padding:16px}.body{padding:18px}}
+</style></head><body>
+<svg class="tux" viewBox="0 0 240 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <g fill="#9fd0ff">
+  <ellipse cx="120" cy="190" rx="78" ry="100"/>
+  <circle cx="120" cy="86" r="58"/>
+  <ellipse cx="120" cy="205" rx="46" ry="72" fill="#0a0f16"/>
+  <ellipse cx="96" cy="80" rx="13" ry="17" fill="#0a0f16"/><ellipse cx="144" cy="80" rx="13" ry="17" fill="#0a0f16"/>
+  <circle cx="99" cy="78" r="5" fill="#9fd0ff"/><circle cx="147" cy="78" r="5" fill="#9fd0ff"/>
+  <path d="M120 96 l-16 16 h32 z" fill="#e6a23c"/>
+  <path d="M60 275 q-22 14 -4 20 h44 q8 -10 -14 -20 z"/><path d="M180 275 q22 14 4 20 h-44 q-8 -10 14 -20 z"/>
+  <path d="M52 150 q-26 36 -6 66 q12 -4 16 -26 z"/><path d="M188 150 q26 36 6 66 q-12 -4 -16 -26 z"/>
+ </g>
+</svg>
+<div class="wrap">
+ <div class="chips"><span class=chip>mode <b>SETUP / RECOVERY</b></span><span class=chip>kernel <b>6.12.117-wdnas</b></span><span class=chip>arch <b>armv7l · armhf</b></span><span class=chip>board <b>RD-88F6710</b></span></div>
+ <div class="card">
+  <div class=head><div class=logo>W</div><div style="flex:1"><h1 data-i18n=title>WD My Cloud EX2 — Installer</h1><div class=sub><span data-i18n=sub>Recovery &amp; install · Marvell Armada 370</span> · <span id=host></span></div></div><button class="btn" id=lang title="Language">EN</button></div>
+  <div class=body>
+   <div class=state><span class=dot></span> <span data-i18n=state>Setup / recovery mode</span></div>
+   <ol><li data-i18n=step1><b>Insert a USB 3.0 stick with <code>rootfs.tar.xz</code></b> (FAT32 or ext4) — the installer finds it automatically.</li><li data-i18n=step2>Plug in one or two SATA disks for your data.</li><li data-i18n=step3>Review the detected devices, then dry-run before installing.</li></ol>
+   <div class=hint data-i18n=hint>Nothing is written until you type <code>ERASE</code> and press Install. If you already have a bootable Debian USB stick, remove it, re-insert and reboot — this page only appears when no OS is found.</div>
+   <h2 data-i18n=devices>Detected block devices</h2><div id=list><div class=empty>scanning…</div></div>
+   <div class=install><h2 data-i18n=install>Install</h2>
+    <div class=row><label data-i18n=ostarget>OS target (USB stick recommended)</label><select id=os></select></div>
+    <div class=row><label data-i18n=datadisk>Data disk(s) for RAID1 (optional)</label><select id=data><option value="">— none —</option></select></div>
+    <div class=row><label><input type=checkbox id=raid> <span data-i18n=raidopt>create RAID1 on the data disks</span></label></div>
+    <div class=row><label><span data-i18n=confirmlbl>Type</span> <code>ERASE</code> <span data-i18n=confirm2>to confirm</span></label><input id=confirm placeholder=ERASE autocomplete=off></div>
+    <div class=row><button class=btn id=dry data-i18n=dry>Dry run (no writes)</button><button class="btn primary danger" id=go data-i18n=go>Install</button></div>
+    <pre id=out class=out></pre>
+   </div>
+  </div>
+  <div class=foot><span>Custom build by ImAthanasia · build: EX2-Gen1-v1</span><span><a href="https://github.com/ImAthanasia">GitHub ↗</a> · setup mode</span></div>
+ </div>
+</div>
+<script>
+const I18N={
+ en:{title:"WD My Cloud EX2 — Installer",sub:"Recovery & install · Marvell Armada 370",state:"Setup / recovery mode",
+  step1:"<b>Insert a USB 3.0 stick with <code>rootfs.tar.xz</code></b> (FAT32 or ext4) — the installer finds it automatically.",
+  step2:"Plug in one or two SATA disks for your data.",step3:"Review the detected devices, then dry-run before installing.",
+  hint:"Nothing is written until you type <code>ERASE</code> and press Install. If you already have a bootable Debian USB stick, remove it, re-insert and reboot — this page only appears when no OS is found.",
+  devices:"Detected block devices",install:"Install",ostarget:"OS target (USB stick recommended)",datadisk:"Data disks for RAID1 (optional)",
+  raidopt:"create RAID1 on the data disks",confirmlbl:"Type",confirm2:"to confirm",dry:"Dry run (no writes)",go:"Install",
+  scanning:"scanning…",nodisk:"No disks detected yet — insert a USB drive or disk.",unavail:"Device list unavailable — this page is read-only outside recovery mode.",
+  badresp:"Invalid response from device scanner. Showing safe state.",reqfail:"request failed",working:"working…",installerr:"Installer unavailable in this preview. Boot into recovery mode to install."},
+ pl:{title:"WD My Cloud EX2 — Instalator",sub:"Naprawa i instalacja · Marvell Armada 370",state:"Tryb konfiguracji / naprawy",
+  step1:"<b>Włóż pamięć USB 3.0 z plikiem <code>rootfs.tar.xz</code></b> (FAT32 lub ext4) — instalator znajdzie ją automatycznie.",
+  step2:"Podłącz jeden lub dwa dyski SATA na dane.",step3:"Sprawdź wykryte urządzenia, a następnie uruchom test na sucho przed instalacją.",
+  hint:"Nic nie jest zapisywane dopóki nie wpiszesz <code>ERASE</code> i naciśniesz Instaluj. Jeśli masz już bootowalną pamięć z Debianem, wyjmij ją, włóż ponownie i zrestartuj — ta strona pojawia się tylko gdy nie znaleziono systemu.",
+  devices:"Wykryte urządzenia blokowe",install:"Instalacja",ostarget:"Cel systemu (zalecana pamięć USB)",datadisk:"Dyski danych dla RAID1 (opcjonalnie)",
+  raidopt:"utwórz RAID1 na dyskach danych",confirmlbl:"Wpisz",confirm2:"aby potwierdzić",dry:"Test na sucho (bez zapisu)",go:"Instaluj",
+  scanning:"skanowanie…",nodisk:"Nie wykryto dysków — włóż pamięć USB lub dysk.",unavail:"Lista urządzeń niedostępna — ta strona jest tylko do odczytu poza trybem naprawy.",
+  badresp:"Nieprawidłowa odpowiedź skanera urządzeń. Pokazywany jest bezpieczny stan.",reqfail:"błąd żądania",working:"pracuję…",installerr:"Instalator niedostępny w tym podglądzie. Uruchom tryb naprawy, aby zainstalować."}
+};
+let LANG=localStorage.getItem('wd-lang')||'en';
+const t=k=>(I18N[LANG]||I18N.en)[k]||I18N.en[k]||k;
+function applyLang(){document.querySelectorAll('[data-i18n]').forEach(e=>{const v=t(e.dataset.i18n);if(v.indexOf('<')>=0)e.innerHTML=v;else e.textContent=v});
+ document.getElementById('lang').textContent=LANG==='en'?'PL':'EN';
+ document.documentElement.lang=LANG;
+ load();}
+document.getElementById('lang').onclick=()=>{LANG=LANG==='en'?'pl':'en';localStorage.setItem('wd-lang',LANG);applyLang()};
+document.getElementById('host').textContent=location.hostname||'wdmycloud';
+let disks=[];
+function fill(){const os=document.getElementById('os'),data=document.getElementById('data');const a=os.value,b=data.value;
+ os.innerHTML=disks.map(d=>`<option value="/dev/${d.n}">/dev/${d.n} — ${d.sz}</option>`).join('');
+ data.innerHTML='<option value="">— none —</option>'+disks.map(d=>`<option value="/dev/${d.n}">/dev/${d.n} — ${d.sz}</option>`).join('');
+ if(a)os.value=a;if(b)data.value=b;}
+const safeText=x=>String(x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function getText(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+ const ct=(r.headers.get('content-type')||'');if(/html|xml/i.test(ct))throw new Error('non-text response');
+ const body=(await r.text()).trim();if(/^<|<!DOCTYPE/i.test(body))throw new Error('non-text body');return body;}
+async function load(){const el=document.getElementById('list');el.innerHTML=`<div class=empty>${t('scanning')}</div>`;
+ try{const body=await getText('/disks.txt');
+  if(!body){el.innerHTML=`<div class=empty>${t('nodisk')}</div>`;disks=[];fill();return;}
+  disks=body.split('\n').filter(Boolean).map(l=>{const p=l.trim().split(/\s+/);return{n:p[0],sz:p.slice(1).join(' ')}})
+   .filter(d=>/^sd[a-z]+[0-9]*$|^nvme|^mmcblk/.test(d.n));
+  if(!disks.length){el.innerHTML=`<div class=empty>${t('nodisk')}</div>`;fill();return;}
+  el.innerHTML=disks.map(d=>`<div class=dev><code>/dev/${safeText(d.n)}</code><span>${safeText(d.sz)}</span></div>`).join('');fill();
+ }catch(e){el.innerHTML=`<div class=empty>${t('unavail')}</div>`;disks=[];fill();}}
+async function run(dry){const q=new URLSearchParams({os:document.getElementById('os').value,data:document.getElementById('data').value,raid:document.getElementById('raid').checked?'1':'0',confirm:document.getElementById('confirm').value,dry:dry?'1':'0'});
+ const out=document.getElementById('out');out.style.display='block';out.textContent=t('working');
+ try{const r=await fetch('/cgi-bin/install',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:q.toString()});
+  const ct=r.headers.get('content-type')||'';if(!r.ok||/html|xml/i.test(ct))throw new Error('HTTP '+r.status);
+  const body=await r.text();out.textContent=/^<|<!DOCTYPE/i.test(body)?t('installerr'):body;
+ }catch(e){out.textContent=t('installerr')+' ('+(e.message||'')+')';}}
+document.getElementById('dry').onclick=()=>run(true);document.getElementById('go').onclick=()=>run(false);applyLang();setInterval(load,5000);
+</script></body></html>

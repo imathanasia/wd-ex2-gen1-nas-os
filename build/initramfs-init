@@ -1,0 +1,39 @@
+#!/bin/busybox ash
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+mount -t proc none /proc 2>/dev/null
+mount -t sysfs none /sys 2>/dev/null
+mount -t devtmpfs none /dev 2>/dev/null
+echo /sbin/mdev >/proc/sys/kernel/hotplug 2>/dev/null
+mdev -s 2>/dev/null
+mkdir -p /mnt/root
+DEVP=""
+for x in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+  mdev -s 2>/dev/null
+  DEVP=$(blkid -L rootfs 2>/dev/null)
+  [ -z "$DEVP" ] && DEVP=$(blkid -l -o device -t LABEL=rootfs 2>/dev/null)
+  [ -n "$DEVP" ] && break
+  sleep 1
+done
+if [ -z "$DEVP" ]; then
+  for d in /dev/sda1 /dev/sdb1 /dev/sdc1 /dev/sdd1; do
+    if blkid $d 2>/dev/null | grep -q rootfs; then DEVP=$d; break; fi
+  done
+fi
+if [ -z "$DEVP" ]; then
+  echo "rootfs (LABEL=rootfs) not found; rescue shell"
+  exec setsid cttyhack /bin/ash
+fi
+echo "Mounting $DEVP -> /mnt/root"
+if ! mount -o rw "$DEVP" /mnt/root; then
+  echo "mount failed; rescue shell"; exec setsid cttyhack /bin/ash
+fi
+if [ -e /mnt/root/sbin/init ] || [ -L /mnt/root/sbin/init ]; then
+  mount -t proc none /mnt/root/proc 2>/dev/null
+  mount -t sysfs none /mnt/root/sys 2>/dev/null
+  mount --move /dev /mnt/root/dev 2>/dev/null
+  echo "switch_root to $DEVP"
+  exec switch_root /mnt/root /sbin/init
+else
+  echo "no /sbin/init on $DEVP; rescue shell"
+  exec setsid cttyhack /bin/ash
+fi

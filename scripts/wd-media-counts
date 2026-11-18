@@ -1,0 +1,10 @@
+#!/bin/sh
+# wd-media-counts - publish media file counts as JSON for the Media Hub page.
+set -u
+ROOT=${ROOT:-/srv/nas}
+OUT=${OUT:-/var/www/homer/media-counts.json}
+cnt(){ find "$ROOT/$1" -type f 2>/dev/null | wc -l; }
+tmp="$OUT.tmp"
+printf '{"photos":%s,"music":%s,"downloads":%s,"ts":%s}\n' \
+  "$(cnt photos)" "$(cnt music)" "$(cnt downloads)" "$(date +%s)" > "$tmp"
+mv -f "$tmp" "$OUT"

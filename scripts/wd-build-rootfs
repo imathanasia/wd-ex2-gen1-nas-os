@@ -1,0 +1,38 @@
+#!/bin/sh
+# wd-build-rootfs - build a CLEAN minimal Debian rootfs tarball for the installer.
+# Run on the NAS. Excludes live data, caches, logs and big app payloads.
+# The installer streams URL downloads directly to the target disk, so the tarball
+# no longer has a 250 MB RAM cap. Local-file installs still read from /data.
+set -eu
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+OUT=${OUT:-/srv/nas/backups/rootfs/rootfs-$STAMP.tar.xz}
+mkdir -p "$(dirname "$OUT")"
+EX=/tmp/wd-rootfs-exclude.$$
+cat > "$EX" <<'X'
+srv/nas/*
+var/cache/*
+var/log/*
+tmp/*
+proc/*
+sys/*
+dev/*
+run/*
+opt/AdGuardHome/*
+opt/navidrome/*
+opt/copyparty/*
+usr/src/*
+root/.cache/*
+usr/share/doc/*
+usr/share/man/*
+usr/share/locale/*
+usr/lib/locale/*
+usr/lib/modules/6.1.0-50-rt-armmp/*
+usr/lib/modules/*.old/*
+var/lib/apt/lists/*
+root/uImage*
+X
+echo "building $OUT (xz -1, faster on armhf)..."
+XZ_OPT=-1 tar -C / --exclude-from="$EX" -cJf "$OUT" .
+rm -f "$EX"
+sha256sum "$OUT" > "$OUT.sha256"
+echo "done:"; ls -lh "$OUT" "$OUT.sha256"

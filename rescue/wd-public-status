@@ -1,0 +1,46 @@
+#!/bin/sh
+# Hub status producer: /status.json (unit map) + /diag.json (system KPIs). Atomic, 60 s timer.
+out=/var/www/homer/status.json; tmp=$out.tmp
+{
+  printf '{'; first=1
+  for u in adguardhome filebrowser lighttpd copyparty syncthing@nas navidrome transmission-daemon wd-glances cups smbd nmbd nfs-server ssh tailscaled wd-control wg-quick@wg0; do
+    a=$(systemctl is-active "$u" 2>/dev/null)
+    [ "$first" = 1 ] || printf ','; first=0
+    printf '"%s":"%s"' "$u" "$a"
+  done
+  printf '}\n'
+} > "$tmp" && mv "$tmp" "$out"
+
+tout=/var/www/homer/diag.json; ttmp=$tout.tmp
+TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null); TEMP=${TEMP:-0}; TEMP=$((TEMP/1000))
+FANRPM=0; FANSTATE=0
+for h in /sys/class/hwmon/hwmon*; do
+  [ "$(cat "$h/name" 2>/dev/null)" = "gpio_fan" ] || continue
+  FANRPM=$(cat "$h/fan1_input" 2>/dev/null || echo 0)
+  FANSTATE=$(cat /sys/class/thermal/cooling_device0/cur_state 2>/dev/null || echo 0)
+  break
+done
+MEMT=$(awk '/MemTotal/{print $2}' /proc/meminfo); MEMA=$(awk '/MemAvailable/{print $2}' /proc/meminfo)
+D_TOT=$(df -k /srv/nas 2>/dev/null | awk 'NR==2{print $2}'); D_USED=$(df -k /srv/nas 2>/dev/null | awk 'NR==2{print $3}')
+D_TOT=${D_TOT:-0}; D_USED=${D_USED:-0}
+MD=$(grep -oE 'UU|\[U+_|\[____\]' /proc/mdstat 2>/dev/null | head -1)
+LOAD=$(cut -d' ' -f1 /proc/loadavg 2>/dev/null)
+DISKS=
+for d in /dev/sd?; do
+  [ -b "$d" ] || continue
+  N=${d##*/}
+  M=$(smartctl -i -n standby "$d" 2>/dev/null | sed -n 's/^Device Model:[[:space:]]*//p' | head -1)
+  H=$(smartctl -H -n standby "$d" 2>/dev/null | sed -n 's/.*test result:[[:space:]]*//p' | head -1)
+  T=$(smartctl -A -n standby "$d" 2>/dev/null | awk '/Temperature_Celsius/{print $10; exit}')
+  [ -n "$M$H$T" ] || continue
+  case "$T" in ''|*[!0-9]*) T=null ;; esac
+  [ -n "$H" ] || H=unknown
+  DISKS="${DISKS:+$DISKS,}{\"dev\":\"$N\",\"model\":\"$M\",\"temp\":$T,\"health\":\"$H\"}"
+done
+{
+  printf '{"cpu_temp":%s,"fan_rpm":%s,"fan_state":%s,' "$TEMP" "$FANRPM" "$FANSTATE"
+  printf '"mem_total":%s,"mem_avail":%s,' "${MEMT:-0}" "${MEMA:-0}"
+  printf '"disk_total":%s,"disk_used":%s,' "$D_TOT" "$D_USED"
+  printf '"load":%s,"disks":[%s],' "${LOAD:-0}" "$DISKS"
+  printf '"raid":"%s","ts":%s}\n' "${MD:-none}" "$(cut -d. -f1 /proc/uptime)"
+} > "$ttmp" && mv "$ttmp" "$tout"

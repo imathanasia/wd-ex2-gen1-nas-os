@@ -1,0 +1,45 @@
+<!-- Generated wiring diagram. Not a photograph. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="470" viewBox="0 0 760 470">
+<style>
+  text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;fill:#e8f1fa}
+  .small{font-size:13px;fill:#93a8bd}.title{font-size:22px;font-weight:700}
+  .pin{font-size:15px;font-family:ui-monospace,monospace}
+  .wire1{stroke:#e6a23c;stroke-width:3;fill:none}
+  .wire2{stroke:#2fbf71;stroke-width:3;fill:none}
+  .wire3{stroke:#3aa0ff;stroke-width:3;fill:none}
+  .box{fill:#121d29;stroke:#2a3a4d;stroke-width:2;rx:12}
+</style>
+<rect width="760" height="470" fill="#0a0f16"/>
+<text x="30" y="40" class="title">WD My Cloud EX2 Gen1: JP2 serial wiring</text>
+<text x="30" y="66" class="small">3.3V TTL only. Never connect pin 3 (VCC) or use RS232/5V.</text>
+
+<rect x="40" y="110" width="260" height="290" class="box"/>
+<text x="60" y="145" font-size="18" font-weight="700">EX2 Gen1 JP2</text>
+<text x="60" y="170" class="small">5-pin 2.54 mm header, pin 4 missing</text>
+<g class="pin">
+  <text x="70" y="220">1  TX</text><circle cx="240" cy="215" r="7" fill="#e6a23c"/>
+  <text x="70" y="270">2  GND</text><circle cx="240" cy="265" r="7" fill="#2fbf71"/>
+  <text x="70" y="320">3  3.3V  DO NOT CONNECT</text><circle cx="240" cy="315" r="7" fill="#555"/>
+  <text x="70" y="370">4  no pin</text>
+  <text x="70" y="420">5  RX</text><circle cx="240" cy="415" r="7" fill="#3aa0ff"/>
+</g>
+
+<rect x="470" y="110" width="250" height="290" class="box"/>
+<text x="490" y="145" font-size="18" font-weight="700">USB-TTL adapter</text>
+<text x="490" y="170" class="small">CH340 / CP2102 / FTDI, 3.3V logic</text>
+<g class="pin">
+  <text x="500" y="220">RX</text><circle cx="690" cy="215" r="7" fill="#e6a23c"/>
+  <text x="500" y="270">GND</text><circle cx="690" cy="265" r="7" fill="#2fbf71"/>
+  <text x="500" y="320">VCC</text><circle cx="690" cy="315" r="7" fill="#555"/>
+  <text x="500" y="420">TX</text><circle cx="690" cy="415" r="7" fill="#3aa0ff"/>
+</g>
+
+<path class="wire1" d="M247 215 H690"/>
+<path class="wire2" d="M247 265 H690"/>
+<path class="wire3" d="M247 415 H690"/>
+<text x="360" y="205" class="small">TX → RX</text>
+<text x="360" y="255" class="small">GND → GND</text>
+<text x="360" y="405" class="small">RX → TX</text>
+
+<text x="40" y="450" class="small">Settings: 115200 8N1, no flow control. Power off while wiring; power on after the terminal is open.</text>
+</svg>

@@ -1,0 +1,56 @@
+#!/bin/sh
+# wd-mcu - Weltrend MCU control for WD My Cloud Mirror/EX2 Gen1 via /dev/ttyS1.
+# Protocol taken from the vendor GPL/community notes (see docs/MCU.md):
+# frames are 0xFA <len> <cmd> <arg...> 0xFB at 115200 8N1.
+DEV=${WD_MCU_TTY:-/dev/ttyS1}
+
+_init() {
+  command -v stty >/dev/null 2>&1 && stty -F "$DEV" 115200 cs8 -cstopb -parenb raw -echo 2>/dev/null
+  [ -c "$DEV" ] || { echo "wd-mcu: $DEV missing" >&2; exit 1; }
+}
+
+_send() {
+  # $1 = 4/6-byte payload as octal escapes (printf format)
+  _init
+  printf "$1" > "$DEV" 2>/dev/null || { echo "wd-mcu: write failed" >&2; exit 1; }
+}
+
+_read() {
+  # read up to N bytes with a short timeout, print as hex
+  n=${1:-8}
+  _init
+  timeout 1 dd if="$DEV" bs=1 count="$n" 2>/dev/null | od -An -tx1 | tr -s ' '
+}
+
+case "$1" in
+  ready)    _send '\372\003\001\000\000\000\373'; echo "sent: device-ready" ;;
+  poweroff) _send '\372\003\003\001\001\024\373'; echo "sent: shutdown" ;;
+  led)
+    case "$2" in
+      on)    _send '\372\003\006\001\000\001\373'; echo "led: on" ;;
+      off)   _send '\372\003\006\000\000\001\373'; echo "led: off" ;;
+      blink) _send '\372\003\006\002\000\001\373'; echo "led: blink" ;;
+      *) echo "usage: wd-mcu led {on|off|blink}" >&2; exit 2 ;;
+    esac ;;
+  wol)
+    case "$2" in
+      on)     _send '\372\003\012\001\000\000\373'; echo "wol: enabled" ;;
+      off)    _send '\372\003\012\000\000\000\373'; echo "wol: disabled" ;;
+      status) _send '\372\003\012\002\000\000\373'; sleep 0.2; printf "wol status: "; _read 8 ;;
+      *) echo "usage: wd-mcu wol {on|off|status}" >&2; exit 2 ;;
+    esac ;;
+  temp)  _send '\372\003\010\000\000\000\373'; sleep 0.2; printf "mcu temp: "; _read 8 ;;
+  rtc)   _send '\372\001\010\001\001\000\373'; sleep 0.2; printf "rtc: "; _read 12 ;;
+  *)
+    cat <<EOF
+usage: wd-mcu <command>
+  ready            tell the MCU the OS is up
+  poweroff         ask the MCU to cut power (clean shutdown)
+  led on|off|blink power LED
+  wol on|off|status  Wake-on-LAN
+  temp             read the MCU board temperature
+  rtc              read the MCU RTC
+env: WD_MCU_TTY (default /dev/ttyS1)
+EOF
+    exit 2 ;;
+esac

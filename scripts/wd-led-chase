@@ -1,0 +1,41 @@
+#!/bin/sh
+# wd-led-chase - sysfs LED sweep for the WD My Cloud EX2 Gen1.
+# EX2 LEDs: hdd1-blue, hdd1-red, hdd2-blue, hdd2-red (and power if a3g exists).
+# Saves current trigger/brightness per LED and restores them on exit (or trap).
+set -u
+DIR=/sys/class/leds
+[ -d "$DIR" ] || exit 0
+LEDS=""
+for l in "$DIR"/*; do
+  [ -e "$l/trigger" ] || continue
+  n=${l##*/}
+  case "$n" in hdd*-blue|hdd*-red|*power*|*status*) LEDS="$LEDS $n" ;; esac
+done
+[ -n "$LEDS" ] || exit 0
+
+TMP=$(mktemp -d 2>/dev/null || echo /tmp/.wdled)
+mkdir -p "$TMP"
+restore() {
+  for n in $LEDS; do
+    [ -f "$TMP/$n.trigger" ] && cat "$TMP/$n.trigger" > "$DIR/$n/trigger" 2>/dev/null
+    [ -f "$TMP/$n.brightness" ] && cat "$TMP/$n.brightness" > "$DIR/$n/brightness" 2>/dev/null
+  done
+  rm -rf "$TMP" 2>/dev/null
+}
+trap restore EXIT INT TERM
+
+for n in $LEDS; do
+  sed -n 's/.*\[\([^]]*\)\].*/\1/p' "$DIR/$n/trigger" 2>/dev/null > "$TMP/$n.trigger"
+  cat "$DIR/$n/brightness" 2>/dev/null > "$TMP/$n.brightness"
+  echo none > "$DIR/$n/trigger" 2>/dev/null
+done
+off(){ for n in $LEDS; do echo 0 > "$DIR/$n/brightness" 2>/dev/null; done; }
+on(){ echo 1 > "$DIR/$([ -n "$1" ] && echo "$1")/brightness" 2>/dev/null; }
+
+off
+for n in $LEDS; do on "$n"; sleep 0.15; off; done
+for n in $LEDS; do on "$n"; done; sleep 0.4; off
+for pass in 1 2 3; do
+  for n in $LEDS; do off; on "$n"; sleep 0.15; done
+done
+off

@@ -1,0 +1,60 @@
+To: linux-arm-kernel@lists.infradead.org
+To: andrew@lunn.ch
+To: gregory.clement@bootlin.com
+To: sebastian.hesselbarth@gmail.com
+Cc: devicetree@vger.kernel.org
+Cc: robh@kernel.org
+Cc: krzk+dt@kernel.org
+Cc: conor+dt@kernel.org
+Cc: linux-kernel@vger.kernel.org
+Subject: [PATCH] ARM: dts: armada-370: Add WD My Cloud EX2 (Gen1)
+
+Hello,
+
+This adds a board file for the Western Digital My Cloud EX2 (Gen1) NAS
+(board RD-88F6710 "KingsCanyon", Marvell Armada 370 / 88F6710), which has
+no mainline board file today.
+
+Enabled by the board: both SATA ports, USB2 and USB3 hosts, gpio HDD
+status LEDs, the 4-GPIO chassis fan (gpio-fan, 1500/1700/1800/2100 rpm
+speed map), the rear reset button, mvneta ethernet with the Marvell
+88E1510 phy (rgmii-id), fixed regulators gating USB and SATA disk power,
+and the NAND controller with the stock fixed partition layout.
+
+The NAND node sets "marvell,nand-keep-config". This is required on this
+board: the stock bootloader programs controller timings that mainline does
+not reproduce, and reprogramming them corrupts reads and aborts writes.
+This is the established pattern for NAS boxes on this platform, not a WD
+quirk: the same property (with nand-on-flash-bbt and ECC 4/512) is used by
+armada-370-dlink-dns327l.dts, armada-370-netgear-rn102.dts and
+armada-370-netgear-rn104.dts, and by WD's own EX2 Ultra / Mirror Gen2 board
+file (arch/arm/boot/dts/marvell/armada-385-wd_cloud.dtsi in OpenWrt).
+
+The file is derived from the Armada 370 DB reference design with the
+community GPL description for the WD My Cloud Mirror Gen1 as the hardware
+reference, adjusted to the EX2: NAND moved to the mainline
+nand-controller + nand@0 binding (the legacy "nand@d0000" node has no reg
+resource), and the gpio-fan node does not claim an alarm gpio overlapping
+one of the fan speed GPIOs.
+
+Tested on hardware with 6.12.117: boots unattended from NAND with a USB
+root, RAID1 md0 assembles, LEDs/fan/ethernet/NAND operational; UBI/UBIFS
+volumes attach, mount and persist across reboots. The DTB passes
+dtbs_check with the same legacy-dtsi warning set as the existing
+armada-370 boards (57, identical to armada-370-netgear-rn102.dtb), with
+zero board-specific findings.
+
+Tool-assistance disclosure: portions of this patch were prepared with the
+help of a tool; I reviewed, built, and tested the result on
+hardware and take full responsibility for its content. Signed-off-by is
+mine (human).
+
+Best regards,
+ImAthanasia
+https://github.com/ImAthanasia
+
+Signed-off-by: ImAthanasia <imathanasia@users.noreply.github.com>
+
+The patch is attached as 0001-ARM-dts-armada-370-Add-WD-My-Cloud-EX2-Gen1.patch
+(plain text, sent with git format-patch). If your mail client cannot attach
+text/x-patch, use EMAIL-INLINE.txt and send everything as plain text.

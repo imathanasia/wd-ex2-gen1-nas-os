@@ -1,0 +1,39 @@
+#!/bin/sh
+# wd-setclock - best-effort UTC clock sync from an HTTP Date header.
+#
+# Why: the EX2 Gen1 RTC battery is flat ("rtc-mv internal RTC not ticking"),
+# so after a power cut the clock can be years off. HTTPS downloads then fail
+# certificate validation before any body is fetched. This helper needs no NTP
+# (the appliance busybox has no ntpd) and no DNS (default target is 1.1.1.1).
+#
+# Usage: wd-setclock [URL]     default http://1.1.1.1
+# Exit 0 only when the system clock was updated.
+set -u
+URL="${1:-http://1.1.1.1}"
+BB="${BB:-busybox}"
+
+# Avoid busybox sed: some builds segfault on this NAS. Parse in shell instead.
+# NOTE: do NOT use wget -T (segfaults busybox 1.35 on this hardware); wrap with timeout.
+OUT=$($BB timeout 8 $BB wget -S -O /dev/null --no-check-certificate "$URL" 2>&1)
+H=
+while IFS= read -r L
+do
+  case "$L" in
+    *[Dd]ate:*) H=${L##*[Dd]ate:}; H=${H# }; break;;
+  esac
+done <<EOF
+$OUT
+EOF
+[ -n "$H" ] || exit 1
+
+# "Tue, 17 Nov 2026 18:00:00 GMT" -> YYYY-MM-DD HH:MM:SS
+set -- $H
+DAY=$2; MON=$3; YEAR=$4; TIME=$5
+case "$MON" in
+  Jan) M=01;; Feb) M=02;; Mar) M=03;; Apr) M=04;; May) M=05;; Jun) M=06;;
+  Jul) M=07;; Aug) M=08;; Sep) M=09;; Oct) M=10;; Nov) M=11;; Dec) M=12;;
+  *) exit 1;;
+esac
+[ -n "${DAY:-}" ] && [ -n "${YEAR:-}" ] && [ -n "${TIME:-}" ] || exit 1
+$BB date -u -s "$YEAR-$M-$DAY $TIME" >/dev/null 2>&1 || exit 1
+$BB date -u '+clock set to %Y-%m-%d %H:%M:%S UTC'

@@ -1,0 +1,52 @@
+#!/bin/sh
+# wd-backup-usb - snapshot /srv/nas dirs to a mounted USB disk, verify, eject.
+# Usage: wd-backup-usb [device]   (default: auto-detect first non-root USB disk)
+# Reuses installer safety rules: refuses root device, mounted md members, mtd.
+set -u
+BB=/bin/busybox
+log(){ echo "[wd-backup] $*"; }
+die(){ echo "[wd-backup] ERROR: $*" >&2; exit 1; }
+
+SRC=${SRC:-/srv/nas}
+[ -d "$SRC" ] || die "source $SRC missing"
+DEV=${1:-}
+if [ -z "$DEV" ]; then
+  for d in /dev/sd?; do
+    [ -b "$d" ] || continue
+    case "$d" in *"$(findmnt -no SOURCE / 2>/dev/null | sed 's/[0-9]*$//')"*) continue ;; esac
+    grep -qsF "$d" /proc/mounts && continue
+    [ -r /proc/mdstat ] && grep -q "$(basename "$d")" /proc/mdstat && continue
+    DEV=$d; break
+  done
+fi
+[ -n "$DEV" ] || die "no spare USB disk found (pass device explicitly)"
+case "$DEV" in /dev/mtd*|/dev/md*) die "refusing $DEV" ;; esac
+ROOTSRC=$(findmnt -no SOURCE / 2>/dev/null || echo "")
+case "$ROOTSRC" in *"$DEV"*) die "$DEV is the root device" ;; esac
+if [ -r /proc/mdstat ] && grep -q "$(basename "$DEV")" /proc/mdstat; then die "$DEV is a RAID member"; fi
+
+P="${DEV}1"
+case "$DEV" in *[0-9]) P="${DEV}p1" ;; esac
+MP=/mnt/wd-backup
+mkdir -p "$MP"
+mountpoint -q "$MP" && die "$MP already mounted"
+mount "$P" "$MP" || die "cannot mount $P"
+trap 'umount "$MP" 2>/dev/null || true' EXIT
+
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+DEST="$MP/wd-backup-$STAMP"
+mkdir -p "$DEST" || die "cannot create $DEST"
+log "snapshot $SRC -> $DEST"
+tar -C "$SRC" -cf - . | tar -C "$DEST" -xf - || die "copy failed"
+
+log "verifying SHA-256 manifests"
+( cd "$SRC" && find . -type f -print0 | sort -z | xargs -0 sha256sum ) > "$MP/wd-backup-$STAMP.sha256.src"
+( cd "$DEST" && find . -type f -print0 | sort -z | xargs -0 sha256sum ) > "$MP/wd-backup-$STAMP.sha256.dst"
+cmp -s "$MP/wd-backup-$STAMP.sha256.src" "$MP/wd-backup-$STAMP.sha256.dst" || die "SHA-256 verification FAILED"
+log "SHA-256 OK $(wc -l < "$MP/wd-backup-$STAMP.sha256.src") files"
+
+sync
+umount "$MP" || die "umount failed"
+trap - EXIT
+eject "$DEV" 2>/dev/null || log "eject unavailable (manual removal OK)"
+log "DONE: $DEST on $P"

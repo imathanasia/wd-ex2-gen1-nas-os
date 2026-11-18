@@ -1,0 +1,40 @@
+#!/bin/busybox sh
+# Appliance bootstrap initramfs (v4) with kmsg diagnostics.
+BB=/bin/busybox
+klog() { $BB echo "appboot: $*" > /dev/kmsg 2>/dev/null; $BB echo "appboot: $*" > /dev/ttyS0 2>/dev/null; }
+
+$BB mkdir -p /proc /sys /dev /newroot 2>/dev/null
+$BB mount -t proc proc /proc 2>/dev/null
+$BB mount -t sysfs sysfs /sys 2>/dev/null
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null
+$BB mdev -s 2>/dev/null
+
+klog "start console=$([ -c /dev/console ] && echo yes || echo no) ttyS0=$([ -c /dev/ttyS0 ] && echo yes || echo no) kmsg=$([ -c /dev/kmsg ] && echo yes || echo no)"
+
+[ -c /dev/console ] && exec </dev/console >/dev/console 2>&1
+
+i=0
+while [ ! -b /dev/mtdblock4 ] && [ "$i" -lt 60 ]; do
+  $BB sleep 1
+  $BB mdev -s 2>/dev/null
+  i=$((i + 1))
+done
+if [ -b /dev/mtdblock4 ]; then
+  klog "mtdblock4 present after ${i}s"
+  if $BB mount -t squashfs -o ro /dev/mtdblock4 /newroot; then
+    klog "squashfs mounted; /newroot/init=$([ -x /newroot/init ] && echo yes || echo no)"
+    if [ -x /newroot/init ]; then
+      klog "exec switch_root /newroot /init"
+      exec $BB switch_root /newroot /init
+      klog "switch_root returned unexpectedly"
+    fi
+  else
+    klog "squashfs mount FAILED"
+  fi
+else
+  klog "mtdblock4 ABSENT after ${i}s"
+fi
+
+klog "bootstrap failed; dropping to shell"
+$BB sh
+while :; do $BB sleep 3600; done

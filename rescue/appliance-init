@@ -1,0 +1,139 @@
+#!/bin/busybox sh
+# NAND appliance / boot manager (v5).
+#  - If an installed root filesystem is found (ext4 partition with /sbin/init), hand off
+#    to it with switch_root (same 6.12 kernel as the installed OS).
+#  - Otherwise enter SETUP mode: network + web setup page (:80) + backchannel (:8098).
+#  - PID 1 must never exit.
+BB=/bin/busybox
+klog() { $BB echo "wd-boot: $*" > /dev/kmsg 2>/dev/null; }
+
+$BB mount -t proc proc /proc 2>/dev/null
+$BB mount -t sysfs sysfs /sys 2>/dev/null
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null
+$BB mdev -s 2>/dev/null
+
+# Writable scratch layers (root may be UBIFS-rw; /etc,/var keep the tmpfs semantics)
+$BB mount -t tmpfs tmpfs /tmp 2>/dev/null
+$BB mount -t tmpfs tmpfs /run 2>/dev/null
+$BB mkdir -p /newroot 2>/dev/null
+
+if [ -c /dev/console ]; then exec </dev/console >/dev/console 2>&1
+elif [ -c /dev/ttyS0 ]; then exec </dev/ttyS0 >/dev/ttyS0 2>&1
+fi
+
+# /etc lives on the (writable) UBIFS root; seed it from /etc.defaults when empty
+[ -s /etc/passwd ] || $BB cp -a /etc.defaults/. /etc/ 2>/dev/null
+[ -s /etc/hostname ] || $BB cp -f /etc.defaults/hostname /etc/hostname 2>/dev/null
+$BB hostname -F /etc/hostname 2>/dev/null
+echo ""
+echo "WD NAND boot manager - $($BB hostname 2>/dev/null)"
+
+# ---------------------------------------------------------------- boot manager probe
+SETUP=0
+case "$($BB cat /proc/cmdline 2>/dev/null)" in *wdnosetup=1*) SETUP=1;; esac
+[ -e /data/no-autoboot ] && SETUP=1
+
+if [ "$SETUP" = "0" ]; then
+  # wait for USB/SATA block devices to enumerate (xHCI can take a few seconds)
+  i=0
+  while [ -z "$($BB ls /dev/sd* 2>/dev/null)" ] && [ "$i" -lt 20 ]; do
+    $BB sleep 1; $BB mdev -s 2>/dev/null; i=$((i+1))
+  done
+  echo "boot-manager: block devices: $($BB ls /dev/sd* 2>/dev/null | tr '\n' ' ')"
+  for dev in /dev/sd?[0-9] /dev/sd?; do
+    [ -b "$dev" ] || continue
+    if $BB mount -t ext4 -o ro "$dev" /newroot 2>/dev/null; then
+      # NOTE: /sbin/init may be an absolute symlink; use real markers
+      if [ -e /newroot/etc/debian_version ] || [ -e /newroot/usr/sbin/init ] || [ -x /newroot/init ]; then
+        klog "installed root found on $dev"
+        echo "boot-manager: installed OS on $dev -> handing off"
+        $BB umount /newroot 2>/dev/null
+        if $BB mount "$dev" /newroot 2>/dev/null; then
+          $BB mkdir -p /newroot/.oldroot /newroot/proc /newroot/sys /newroot/dev /newroot/run 2>/dev/null
+          # pivot_root works for any old root (switch_root needs an initramfs)
+          if $BB pivot_root /newroot /newroot/.oldroot 2>/dev/null; then
+            $BB cd /newroot 2>/dev/null
+            # release the old root (holds the UBI device open otherwise)
+            $BB umount -l /.oldroot 2>/dev/null
+            echo "boot-manager: pivot_root done, starting OS init"
+            exec $BB chroot . /sbin/init
+            klog "chroot exec returned"
+          fi
+          klog "pivot_root failed"
+          echo "boot-manager: pivot_root failed; rebooting into the OS via U-Boot"
+          $BB umount /newroot 2>/dev/null
+          $BB reboot -f
+        fi
+      fi
+      $BB umount /newroot 2>/dev/null
+    fi
+  done
+  echo "boot-manager: no installed OS found"
+  klog "no installed OS found -> setup mode"
+fi
+
+# ---------------------------------------------------------------- setup mode
+echo "boot-manager: entering SETUP mode"
+$BB ip link set eth0 up 2>/dev/null
+$BB udhcpc -i eth0 -q -n -t 6 -s /usr/share/udhcpc/default.script 2>/dev/null
+if ! $BB ip -o -4 addr show dev eth0 2>/dev/null | $BB grep -q 'inet '; then
+  $BB ip addr add 192.168.1.22/24 dev eth0 2>/dev/null
+  $BB ip route add default via 192.168.1.1 2>/dev/null
+fi
+IP=$($BB ip -o -4 addr show dev eth0 2>/dev/null | $BB awk '{print $4}' | $BB cut -d/ -f1)
+
+# RTC battery is flat, so the clock can be years off (breaks TLS and log
+# timestamps). Best-effort UTC sync from an HTTP Date header; never blocks.
+( [ -x /rescue/wd-setclock ] && /rescue/wd-setclock >/dev/null 2>&1 ) &
+
+$BB mkdir -p /www /run/wd/backchannel /data 2>/dev/null
+$BB mount -t ubifs ubi0:data /data 2>/dev/null
+
+# Setup landing page (DSM-styled) + live disk list
+if [ -d /setup ]; then
+  $BB cp -a /setup/. /www/ 2>/dev/null
+  $BB chmod -R 755 /www/cgi-bin 2>/dev/null
+elif [ -f /setup/index.html ]; then
+  $BB cp -f /setup/index.html /www/index.html 2>/dev/null
+else
+  echo '<html><body><h1>WD NAS setup</h1><p>Insert a USB 3.0 stick for the OS.</p></body></html>' > /www/index.html
+fi
+cat > /www/disks.txt 2>/dev/null <<EOF
+EOF
+{
+  for d in /sys/block/sd*; do
+    [ -e "$d" ] || continue
+    n=$($BB basename "$d")
+    sz=$(( $($BB cat "$d/size" 2>/dev/null || echo 0) / 2097152 ))
+    printf "%s %s GiB\n" "$n" "$sz"
+  done
+} > /www/disks.txt 2>/dev/null
+
+$BB httpd -p 80 -h /www 2>/dev/null && echo "setup UI: http://${IP:-<ip>}/"
+$BB httpd -p 8098 -h /www 2>/dev/null && echo "status:   http://${IP:-<ip>}:8098/disks.txt"
+$BB ln -sf /run/wd/backchannel/status.json /www/status.json 2>/dev/null
+[ -e /run/wd/backchannel/status.json ] || \
+  echo '{"schema":"wd-backchannel/1","mode":"setup","stage":"waiting"}' > /run/wd/backchannel/status.json
+
+# Key-only Dropbear for remote help
+$BB chown -R 0:0 /root 2>/dev/null; $BB chmod 700 /root /root/.ssh 2>/dev/null
+if [ -x /usr/sbin/dropbear ]; then
+  $BB mkdir -p /etc/dropbear 2>/dev/null
+  /usr/sbin/dropbear -R -s -p 22 2>/dev/null && echo "ssh: key-only on ${IP:-?}:22"
+fi
+
+echo ""
+echo "SETUP MODE. Open http://${IP:-<ip>}/ in a browser."
+echo "Insert a USB 3.0 flash drive (recommended) or a disk for the OS."
+echo "Serial shell follows; type 'exit' to stay in setup."
+echo ""
+
+# Diagnostics refresh in background (non-blocking)
+if [ -x /rescue/diagnose.sh ]; then
+  ( MODE=setup /rescue/diagnose.sh >/dev/null 2>&1
+    while :; do $BB sleep 60; MODE=setup /rescue/diagnose.sh >/dev/null 2>&1; done ) &
+fi
+
+$BB sh
+# PID 1 must never exit.
+while :; do $BB sleep 3600; done

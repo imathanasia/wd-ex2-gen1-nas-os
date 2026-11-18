@@ -1,0 +1,12 @@
+[Unit]
+Description=Render login MOTD with live values
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wd-motd
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,46 @@
+# keys / secrets
+keys/
+*.key
+*.pem
+!wd-image.pub
+*.sig
+
+# build artifacts
+*.o
+*.ko
+*.mod
+*.mod.c
+*.cmd
+*.img
+*.wrapped
+uImage*
+zImage*
+*.dtb
+*.tar.gz
+*.cpio.gz
+
+# local scratch
+tmp/
+*.log
+__pycache__/
+*.pyc
+
+# never publish NAND dumps or local backups
+nand-backup/
+session-backup/
+imports/
+build/new-uinitrd
+
+# local-only files
+NOTES.md
+SESSION-STATE.md
+mockups/
+*.bak
+*sendemail.patch
+
+# marketing/concept HTML stays local or on the NAS, not in the public repo
+docs/campaign-en.html
+docs/campaign-pl.html
+docs/github-preview.html
+docs/banner.html
+logs/

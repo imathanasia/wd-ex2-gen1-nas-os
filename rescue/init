@@ -1,0 +1,65 @@
+#!/bin/busybox sh
+# Minimal rescue initramfs init for WD My Cloud EX2 Gen1.
+# Installs BusyBox applets, brings up network (DHCP -> static fallback),
+# runs diagnostics, starts HTTP backchannel + Dropbear, then gives a shell.
+
+/bin/busybox --install -s 2>/dev/null
+mount -t proc proc /proc 2>/dev/null
+mount -t sysfs sysfs /sys 2>/dev/null
+mount -t devtmpfs devtmpfs /dev 2>/dev/null
+mdev -s 2>/dev/null
+
+# Console + motd
+[ -c /dev/ttyS0 ] && exec </dev/ttyS0 >/dev/ttyS0 2>&1
+hostname -F /etc/hostname 2>/dev/null || true
+[ -x /etc/motd.sh ] && /etc/motd.sh || cat /etc/motd 2>/dev/null || true
+
+# Network: DHCP first, then static fallback
+ip link set eth0 up 2>/dev/null || ifconfig eth0 up 2>/dev/null
+if command -v udhcpc >/dev/null 2>&1; then
+  udhcpc -i eth0 -q -n -t 6 -s /usr/share/udhcpc/default.script 2>/dev/null || true
+fi
+if ! ip -o -4 addr show eth0 2>/dev/null | grep -q 'inet '; then
+  ip addr add 192.168.1.22/24 dev eth0 2>/dev/null || ifconfig eth0 192.168.1.22 netmask 255.255.255.0 2>/dev/null
+  ip route add default via 192.168.1.1 2>/dev/null || route add default gw 192.168.1.1 2>/dev/null
+fi
+
+# Diagnostics + backchannel
+mkdir -p /run/wd/backchannel /www 2>/dev/null
+[ -x /rescue/diagnose.sh ] && MODE=rescue /rescue/diagnose.sh
+# Live files: symlinks so httpd serves the current status without a copying loop
+ln -sf /run/wd/backchannel/status.json /www/status.json 2>/dev/null
+ln -sf /run/wd/backchannel/events.log /www/events.log 2>/dev/null
+[ -e /run/wd/backchannel/status.json ] || \
+  echo '{"schema":"wd-backchannel/1","mode":"rescue","stage":"boot"}' > /run/wd/backchannel/status.json
+# Keep status fresh (uptime, network, temps); never writes anywhere else
+( while :; do sleep 60; [ -x /rescue/diagnose.sh ] && MODE=rescue /rescue/diagnose.sh >/dev/null 2>&1; done ) &
+
+# Tiny HTTP backchannel (read-only files)
+if command -v httpd >/dev/null 2>&1; then
+  httpd -p 8098 -h /www 2>/dev/null && echo "backchannel: http://192.168.1.22:8098/status.json"
+fi
+
+# SSH (host keys generated at build; key-only root login)
+chown -R 0:0 /root 2>/dev/null; chmod 700 /root /root/.ssh 2>/dev/null
+if [ -x /usr/sbin/dropbear ]; then
+  mkdir -p /root/.ssh /etc/dropbear 2>/dev/null
+  chmod 700 /root/.ssh 2>/dev/null
+  dropbear -R -s -p 22 2>/dev/null && echo "ssh: root@192.168.1.22 (key only)"
+fi
+
+# Rescue timeout (kayrus/rescue-initramfs pattern): if nobody connects over SSH within
+# 5 minutes and /tmp/noautoreboot does not exist, reboot to the normal OS.
+# A serial-shell user should run: touch /tmp/noautoreboot
+(
+  sleep 300
+  if [ ! -f /tmp/noautoreboot ] && ! netstat -tn 2>/dev/null | grep -q ':22[[:space:]].*ESTABLISHED'; then
+    echo "no rescue session after 5min; rebooting to normal OS" | tee -a /run/wd/backchannel/events.log
+    sleep 2; reboot -f
+  fi
+) &
+
+echo
+echo "Rescue shell ready. Read-only by default. Try: wd-diag"
+echo "Auto-reboot to normal in 5min unless an SSH session opens (touch /tmp/noautoreboot to disable)"
+exec /bin/sh

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
+<style>
+  text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;fill:#e8f1fa}
+  .title{font-size:22px;font-weight:700}.label{font-size:15px}.small{font-size:13px;fill:#93a8bd}
+  .board{fill:#162432;stroke:#2a3a4d;stroke-width:3;rx:18}
+  .part{fill:#1d2b3a;stroke:#3a4d62;stroke-width:2;rx:8}
+  .sata{fill:#0f1721;stroke:#3a4d62;stroke-width:2;rx:6}
+  .highlight{fill:#e6a23c;stroke:#fff2c4;stroke-width:3}
+  .arrow{fill:none;stroke:#e6a23c;stroke-width:3}
+</style>
+<rect width="900" height="560" fill="#0a0f16"/>
+<text x="30" y="40" class="title">Where JP2 is on the EX2 Gen1 PCB</text>
+<text x="30" y="66" class="small">Schematic, not to scale. Photo references are linked in BEGINNER-INSTALL.md.</text>
+<rect x="90" y="100" width="720" height="380" class="board"/>
+<text x="120" y="140" class="small">BACK SIDE OF PCB (opposite the CPU)</text>
+<rect x="130" y="180" width="180" height="70" class="part"/>
+<text x="150" y="220" class="label">CPU side</text>
+<rect x="560" y="180" width="190" height="70" class="part"/>
+<text x="585" y="220" class="label">fan / rear</text>
+<rect x="150" y="330" width="220" height="55" class="sata"/>
+<text x="175" y="366" class="label">SATA connector 1</text>
+<rect x="150" y="410" width="220" height="55" class="sata"/>
+<text x="175" y="446" class="label">SATA connector 2</text>
+<rect x="395" y="330" width="70" height="55" class="sata"/>
+<text x="410" y="366" class="label">USB</text>
+<rect x="500" y="330" width="70" height="55" class="sata"/>
+<text x="515" y="366" class="label">LAN</text>
+<rect x="395" y="410" width="70" height="55" class="sata"/>
+<text x="410" y="446" class="label">power</text>
+<g>
+  <rect x="265" y="280" width="90" height="34" class="highlight"/>
+  <text x="278" y="304" class="label" fill="#0a0f16">JP2</text>
+</g>
+<path class="arrow" d="M310 270 C310 230 370 200 430 175"/>
+<text x="430" y="170" class="label" fill="#e6a23c">JP2: 5-pin UART header</text>
+<text x="120" y="510" class="small">JP2 is on the back of the board, opposite the CPU, near the SATA connector for disk 1.</text>
+<text x="120" y="532" class="small">On many units the header is not soldered. Solder pins or wires to pads 1, 2 and 5 only.</text>
+</svg>

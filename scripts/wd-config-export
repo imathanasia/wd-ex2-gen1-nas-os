@@ -1,0 +1,22 @@
+#!/bin/sh
+# wd-config-export - one-command config backup (NOT a full image backup).
+# Exports /etc, fstab, mdadm.conf, wd-* configs, systemd overrides, MOTD style
+# to a timestamped tar.gz under /srv/nas/backups/config, with SHA-256 manifest.
+set -u
+DEST=${DEST:-/srv/nas/backups/config}
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+OUT="$DEST/config-$STAMP.tar.gz"
+mkdir -p "$DEST" || exit 1
+list=/tmp/wd-config-list.$$
+{
+  echo etc
+  echo usr/local/sbin
+  echo etc/systemd/system
+} > "$list"
+tar -C / -czf "$OUT" -T "$list" 2>/dev/null || { rm -f "$list" "$OUT"; echo "export failed" >&2; exit 1; }
+rm -f "$list"
+sha256sum "$OUT" > "$OUT.sha256"
+# keep last 8
+( cd "$DEST" && ls -1t config-*.tar.gz 2>/dev/null | tail -n +9 | xargs -r rm -f )
+echo "config export: $OUT"
+cat "$OUT.sha256"
