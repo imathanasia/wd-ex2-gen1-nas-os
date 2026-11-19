@@ -4,15 +4,15 @@ Host: `builder@192.168.1.4` (`pve`), access via `ssh -i /root/projects/serve/age
 
 ## WD NAND backup (preserved)
 
-- Copied from hypervisor `/home/agent/wd-nand-backup/` to this repo: `hypervisor-backups/wd-nand-backup-2026-11-18.tar.gz`
+- Copied from hypervisor `/home/builder/wd-nand-backup/` to this repo: `hypervisor-backups/wd-nand-backup-2026-11-18.tar.gz`
 - Size: 111M
 - SHA256: `3f90814b552357e222432ffb950ae07952ec6e1d6feefcb0060fcd6b999cc39d`
 - Verify: `sha256sum hypervisor-backups/wd-nand-backup-2026-11-18.tar.gz`
-- Original directory remains on hypervisor at `/home/agent/wd-nand-backup/`.
+- Original directory remains on hypervisor at `/home/builder/wd-nand-backup/`.
 
 ## wd-build trimmed to rebuild inputs/docs
 
-`/home/agent/wd-build` reduced from ~3.8G to ~388K. Removed extracted kernel trees/tarballs, built images/modules/appliance artifacts, and disposable logs/outputs (`linux-6.12.117*`, `linux-5.10.109*`, `uImage-*`, `zImage_*`, `modules-*`, `appliance.squashfs`, `output`, `dropbear-src`, `appliance-boot`, etc.).
+`/home/builder/wd-build` reduced from ~3.8G to ~388K. Removed extracted kernel trees/tarballs, built images/modules/appliance artifacts, and disposable logs/outputs (`linux-6.12.117*`, `linux-5.10.109*`, `uImage-*`, `zImage_*`, `modules-*`, `appliance.squashfs`, `output`, `dropbear-src`, `appliance-boot`, etc.).
 
 Retained rebuild inputs/scripts/docs:
 - `appliance-bootstrap-init`, `appliance-init`
@@ -29,11 +29,11 @@ Rebuild outputs/artifacts are not stored on hypervisor after cleanup; regenerate
 
 ## Other hypervisor state (2026-11-18)
 
-- `/home/agent/ac68u/`: scratch firmware `.trx` files removed (~267M); kept `femctrl6-readback.sh`.
+- `/home/builder/ac68u/`: scratch firmware `.trx` files removed (~267M); kept `femctrl6-readback.sh`.
 - `/var/tmp`: removed stale `.guestfs-0` and `vzdumptmp83452_104`; remaining entries are system-managed.
-- `/home/agent/iqnap/`: kept (active development, ~14G).
-- `/home/agent/syno-pat/`: reduced to `tools/` and `mining/` (~2.3M). Removed `pats/`, `venv/`, and extracted `work/` (ds213j/ds218j trees; required `sudo -n` for root-owned files). PAT inputs/rebuilt outputs/venv can be regenerated from retained tools and project notes.
-- Kept: `/home/agent/wd-gpl/`, `/home/agent/wd-mockups/`, `/home/agent/wd-nand-backup/`.
+- `/home/builder/iqnap/`: kept (active development, ~14G).
+- `/home/builder/syno-pat/`: reduced to `tools/` and `mining/` (~2.3M). Removed `pats/`, `venv/`, and extracted `work/` (ds213j/ds218j trees; required `sudo -n` for root-owned files). PAT inputs/rebuilt outputs/venv can be regenerated from retained tools and project notes.
+- Kept: `/home/builder/wd-gpl/`, `/home/builder/wd-mockups/`, `/home/builder/wd-nand-backup/`.
 
 ## Resume
 
