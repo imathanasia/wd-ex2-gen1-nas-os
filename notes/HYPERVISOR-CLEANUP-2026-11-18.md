@@ -1,6 +1,6 @@
 # Hypervisor cleanup / preserved artifacts (2026-11-18)
 
-Host: `agent@192.168.1.4` (`pve`), access via `ssh -i /root/projects/serve/agent-pve-key -p 22 -o IdentitiesOnly=yes agent@192.168.1.4` (see `/root/projects/HYPERVISOR-ACCESS.md`).
+Host: `builder@192.168.1.4` (`pve`), access via `ssh -i /root/projects/serve/agent-pve-key -p 22 -o IdentitiesOnly=yes builder@192.168.1.4` (see `/root/projects/HYPERVISOR-ACCESS.md`).
 
 ## WD NAND backup (preserved)
 
